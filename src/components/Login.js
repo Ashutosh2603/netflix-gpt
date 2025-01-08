@@ -4,13 +4,18 @@ import checkValidData from "../utils/validate";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  updateProfile,
 } from "firebase/auth";
 import { auth } from "../utils/firebase";
+import { useDispatch } from "react-redux";
+import { addUser } from "../utils/userSlice";
 
 export const Login = () => {
   const [isSignInForm, setIsSignInForm] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
+  const dispatch = useDispatch();
 
+  const name = useRef(null);
   const email = useRef(null);
   const password = useRef(null);
 
@@ -21,23 +26,7 @@ export const Login = () => {
     if (err) return;
     if (!isSignInForm) {
       // sign up logic
-      signInWithEmailAndPassword(
-        auth,
-        email.current.value,
-        password.current.value
-      )
-        .then((userCredential) => {
-          // Signed in
-          const user = userCredential.user;
-          // ...
-        })
-        .catch((error) => {
-          const errorCode = error.code;
-          const errorMessage = error.message;
-          setErrorMsg(errorCode + "-" + errorMessage);
-        });
-    } else {
-      //sign in logic
+
       createUserWithEmailAndPassword(
         auth,
         email.current.value,
@@ -56,8 +45,47 @@ export const Login = () => {
           setErrorMsg(errorCode + "-" + errorMessage);
           // ..
         });
+    } else {
+      //sign in logic
+      signInWithEmailAndPassword(
+        auth,
+        email.current.value,
+        password.current.value
+      )
+        .then((userCredential) => {
+          // Signed in
+          const user = userCredential.user;
+          updateProfile(user, {
+            displayName: name.current.value,
+            photoURL: "https://example.com/jane-q-user/profile.jpg",
+          })
+            .then(() => {
+              // Profile updated!
+              // ....
+              const { uid, email, displayName } = auth.currentUser;
+              dispatch(
+                addUser(
+                  addUser({
+                    uid: uid,
+                    email: email,
+                    displayName: displayName,
+                  })
+                )
+              );
+            })
+            .catch((error) => {
+              // An error occurred
+              // ...
+            });
+
+          // ...
+        })
+        .catch((error) => {
+          const errorCode = error?.code;
+          const errorMessage = error?.message;
+          setErrorMsg(errorCode + "-" + errorMessage);
+        });
     }
-    console.log(err);
   };
 
   const toggleSignInForm = () => {
@@ -85,6 +113,7 @@ export const Login = () => {
         />
         {!isSignInForm && (
           <input
+            ref={name}
             type="text"
             placeholder="Full name"
             className="p-4 my-4 w-full bg-gray-700"
